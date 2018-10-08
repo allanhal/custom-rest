@@ -3,6 +3,7 @@ module.exports = {
     "schemaName": "users",
     "schema": {
         "id": Number,
+        "picture": String,
         "login": String,
         "password": String
     },

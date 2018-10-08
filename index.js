@@ -2,6 +2,7 @@ const dbUrl = getConfig().mongoUrl;
 const mongoose = require('mongoose');
 const express = require('express');
 const bodyParser = require('body-parser');
+const path = require('path')
 
 const app = express();
 app.use(bodyParser.json());
@@ -15,23 +16,30 @@ mongoose.connect(dbUrl, {
 
 const Users = mongoose.model(getConfig().schemaName, getConfig().schema);
 
-app.listen(getConfig().port, () => {
-    log('');
-    log('Node app is running on port:');
-    log(`http://localhost:${getConfig().port}`);
-    log('');
+app.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
 });
 
-app.get('/', function (req, res) {
-    res.send("It's alive.");
+app.use(express.static(__dirname + '/frontend/dist'))
+
+app.get('/home', (req, res) => {
+    res.sendFile(path.join(__dirname, '/frontend/dist/index.html'))
+})
+
+app.get('/api/', function (req, res) {
+    res.send(`
+    The schema -> ${getConfig().schemaName} <- is alive!
+    `);
 });
 
-app.get(`/${getConfig().schemaName}`, function (req, res) {
+app.get(`/api/${getConfig().schemaName}`, function (req, res) {
     Users.find().then(result => {
         res.json(result)
     });
 });
-app.get(`/${getConfig().schemaName}/:id`, function (req, res) {
+app.get(`/api/${getConfig().schemaName}/:id`, function (req, res) {
     let id = Number(req.params.id)
 
     Users.findOne({
@@ -41,9 +49,21 @@ app.get(`/${getConfig().schemaName}/:id`, function (req, res) {
     });
 });
 
-app.post(`/${getConfig().schemaName}`, function (req, res) {
+app.post(`/api/${getConfig().schemaName}`, function (req, res) {
     let user = new Users(req.body);
     user.save().then(result => res.json(req.body));
+});
+
+app.post(`/api/${getConfig().schemaName}/login`, function (req, res) {
+    let login = req.body.login
+    let password = req.body.password
+
+    Users.findOne({
+        login,
+        password
+    }).then(result => {
+        res.json(result)
+    });
 });
 
 function log(message) {
@@ -75,3 +95,10 @@ function clearRequireCacheAndReturnNewData(modulePath) {
     } catch (e) {}
     return toReturn
 }
+
+app.listen(getConfig().port, () => {
+    log('');
+    log('Node app is running on port:');
+    log(`http://localhost:${getConfig().port}`);
+    log('');
+});
